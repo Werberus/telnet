@@ -382,6 +382,40 @@ func (c *Conn) readUntil(read bool, delims ...string) ([]byte, int, error) {
 	panic(nil)
 }
 
+func (c *Conn) readUntilNoCaseSensitive(read bool, delims ...string) ([]byte, int, error) {
+	if len(delims) == 0 {
+		return nil, 0, nil
+	}
+	p := make([]string, len(delims))
+	for i, s := range delims {
+		if len(s) == 0 {
+			return nil, 0, nil
+		}
+		p[i] = s
+	}
+	var line []byte
+	for {
+		b, err := c.ReadByte()
+		if err != nil {
+			return nil, 0, err
+		}
+		if read {
+			line = append(line, b)
+		}
+		for i, s := range p {
+			if unicode.ToLower(rune(s[0])) == unicode.ToLower(rune(b)) {
+				if len(s) == 1 {
+					return line, i, nil
+				}
+				p[i] = s[1:]
+			} else {
+				p[i] = delims[i]
+			}
+		}
+	}
+	panic(nil)
+}
+
 // ReadUntilIndex reads from connection until one of delimiters occurs. Returns
 // read data and an index of delimiter or error.
 func (c *Conn) ReadUntilIndex(delims ...string) ([]byte, int, error) {
@@ -403,6 +437,12 @@ func (c *Conn) SkipUntilIndex(delims ...string) (int, error) {
 // SkipUntil works like ReadUntil but skips all read data.
 func (c *Conn) SkipUntil(delims ...string) error {
 	_, _, err := c.readUntil(false, delims...)
+	return err
+}
+
+// SkipUntilNoCaseSe works like SkipUntil but no case sensitive data.
+func (c *Conn) SkipUntilNoCaseSensitive(delims ...string) error {
+	_, _, err := c.readUntilNoCaseSensitive(true, delims...)
 	return err
 }
 
